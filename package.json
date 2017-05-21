@@ -13,8 +13,10 @@
   "dependencies": {
     "body-parser": "~1.0.1",
     "express": "~4.0.0",
-    "mongoose": "~4.6.8",
     "morgan": "~1.0.0",
-    "request": "^2.81.0"
+    "request": "^2.81.0",
+    "johnny-five": "*",
+    "socket.io": "*",
+    "raspi-io": "*"
   }
 }

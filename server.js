@@ -5,18 +5,26 @@
 var express    = require('express');
 var bodyParser = require('body-parser');
 var app        = express();
+var http 	   = require('http').Server(app);
 var morgan     = require('morgan');
-var request    = require('request');	
+var request    = require('request');
+var io         = require('socket.io')(http);
+var five 	   = require("johnny-five");
+// var Raspi 	   = require("raspi-io");
+var board 	   = new five.Board({
+//   io: new Raspi()
+});
+var port       = process.env.PORT || 8080; // set our port
 
 // configure app
 app.use(morgan('dev')); // log requests to the console
-
-// configure body parser
+app.use(express.static(__dirname + '/public'));// set static folder
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-var port     = process.env.PORT || 8080; // set our port
-var Bear     = require('./app/models/bear');
+app.get('/', function(req, res) {
+    res.sendFile(__dirname + '/public/index.html');
+});
 
 // ROUTES FOR OUR API
 // =============================================================================
@@ -26,7 +34,6 @@ var router = express.Router();
 
 // middleware to use for all requests
 router.use(function(req, res, next) {
-	// do logging
 	console.log('Something is happening.');
 	next();
 });
@@ -47,21 +54,31 @@ var light = {
 	'id': "123313123"
 }
 
+// When board is ready ...
+board.on("ready", function() {
+  var led = new five.Led("P1-13");
+  led.blink();
+});
+
+// Socket logic 
+io.on('connection', function (socket) {
+
+    console.info('New client connected (id=' + socket.id + ').');
+});
 
 // test route to make sure everything is working (accessed at GET http://localhost:8080/api)
 router.get('/', function(req, res) {
 	res.json({ message: 'hooray! welcome to our api!' });	
 });
 
-// on routes that end in /bears
 // ----------------------------------------------------
 router.route('/devices')
 
 	.post(function(req, res) {
-		var b = req.body.name;  // set the bears name (comes from the request)
+		var b = req.body.name;  
 	})
 
-	// get all the bears (accessed at GET http://localhost:8080/api/bears)
+	// get all the devices (accessed at GET http://localhost:8080/api/devices)
 	.get(function(req, res) {
 		res.json({'message': 'hello','devices': testDevices});
 	});
@@ -69,9 +86,7 @@ router.route('/devices')
 
 // get random joke
 router.route('/jokes')
-	// get the device with that name
 	.get(function(req, res) {
-			// var joke = getJoke(req.params.firstName, req.params.lastName);
 		request('http://api.icndb.com/jokes/random/' ,
 			function(error, response, body){
 			var json_data = JSON.parse(body);
@@ -81,7 +96,6 @@ router.route('/jokes')
 	})
 
 
-// on routes that end in /bears/:bear_id
 // ----------------------------------------------------
 router.route('/devices/:name')
 
@@ -100,34 +114,14 @@ router.route('/devices/:name')
 
 	})
 
-	// update the bear with this id
+	// update the device with this id
 	.put(function(req, res) {
-		Bear.findById(req.params.bear_id, function(err, bear) {
-
-			if (err)
-				res.send(err);
-
-			bear.name = req.body.name;
-			bear.save(function(err) {
-				if (err)
-					res.send(err);
-
-				res.json({ message: 'Bear updated!' });
-			});
-
-		});
+		
 	})
 
-	// delete the bear with this id
+	// delete the device with this id
 	.delete(function(req, res) {
-		Bear.remove({
-			_id: req.params.bear_id
-		}, function(err, bear) {
-			if (err)
-				res.send(err);
-
-			res.json({ message: 'Successfully deleted' });
-		});
+		
 	});
 
 
@@ -135,6 +129,6 @@ router.route('/devices/:name')
 app.use('/api', router);
 
 // START THE SERVER
-// =============================================================================
+// ======================================================
 app.listen(port);
 console.log('Magic happens on port ' + port);
